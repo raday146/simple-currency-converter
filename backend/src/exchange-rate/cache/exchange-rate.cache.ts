@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ExternalExchangeRateResponse } from './types/external-exchange-rate-response';
+import { ExternalExchangeRateResponse } from '../types/external-exchange-rate-response';
 
 const CACHE_KEY = 'USD_RATES';
 const TTL_MS = 60_000;

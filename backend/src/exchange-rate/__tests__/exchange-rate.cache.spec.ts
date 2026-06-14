@@ -1,5 +1,5 @@
-import { ExchangeRateCache } from './exchange-rate.cache';
-import { ExternalExchangeRateResponse } from './types/external-exchange-rate-response';
+import { ExchangeRateCache } from '../cache/exchange-rate.cache';
+import { ExternalExchangeRateResponse } from '../types/external-exchange-rate-response';
 
 const mockData: ExternalExchangeRateResponse = {
   result: 'success',
