@@ -73,6 +73,15 @@ Unexpected crashes never return raw stack traces to the client.
 
 ## API reference
 
+Base URL when running locally or via Docker: `http://localhost:2000`
+
+### Testing with Postman
+
+1. **GET** `http://localhost:2000/api/currencies` — no body required.
+2. **POST** `http://localhost:2000/api/convert` — set header `Content-Type: application/json` and a raw JSON body (see below).
+
+Send the currencies request twice within 60 seconds; the second call should produce a `🟢 HIT` line in `docker logs` (or your terminal if running `npm run start:dev`).
+
 ### `GET /api/currencies`
 
 ```json

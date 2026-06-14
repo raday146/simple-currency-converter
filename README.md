@@ -36,7 +36,29 @@ docker compose up --build
 | **UI** | [http://localhost:2002](http://localhost:2002) |
 | **API** | [http://localhost:2000/api](http://localhost:2000/api) |
 
-Example:
+### Testing the API (Postman)
+
+Base URL: `http://localhost:2000`
+
+| Request | Method | URL | Body |
+|---------|--------|-----|------|
+| List currencies | `GET` | `http://localhost:2000/api/currencies` | — |
+| Convert | `POST` | `http://localhost:2000/api/convert` | Raw JSON (see below) |
+
+For **POST /api/convert**, set `Content-Type: application/json` and use:
+
+```json
+{
+  "amount": 100,
+  "from": "USD",
+  "to": "ILS"
+}
+```
+
+To confirm caching, send **GET /api/currencies** twice within 60 seconds and check backend logs for a green `HIT` line on the second request.
+
+<details>
+<summary>curl alternative</summary>
 
 ```bash
 curl http://localhost:2000/api/currencies
@@ -45,7 +67,7 @@ curl -X POST http://localhost:2000/api/convert \
   -d '{"amount":100,"from":"USD","to":"ILS"}'
 ```
 
-To confirm caching, call `/api/currencies` twice within 60 seconds and check backend logs for a green `HIT` line on the second request.
+</details>
 
 ## Local development (without Docker)
 
