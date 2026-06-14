@@ -40,6 +40,14 @@ describe('ExchangeRateCache', () => {
     expect(cache.get()).toBeUndefined();
   });
 
+  it('reports remaining TTL seconds before expiry', () => {
+    const entry = cache.set(mockData);
+
+    jest.advanceTimersByTime(25_000);
+
+    expect(cache.getTtlRemainingSeconds(entry.fetchedAt)).toBe(35);
+  });
+
   it('clears stored entries', () => {
     cache.set(mockData);
     cache.clear();

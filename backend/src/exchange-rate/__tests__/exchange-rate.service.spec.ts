@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExchangeRateApiClient } from '../providers/exchange-rate-api.client';
 import { ExchangeRateCache } from '../cache/exchange-rate.cache';
@@ -69,7 +69,7 @@ describe('ExchangeRateService', () => {
   it('throws for unsupported currency codes', async () => {
     await expect(
       service.convert({ amount: 10, from: 'USD', to: 'XYZ' }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(NotFoundException);
 
     await expect(
       service.convert({ amount: 10, from: 'XYZ', to: 'USD' }),
