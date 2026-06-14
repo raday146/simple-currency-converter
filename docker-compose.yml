@@ -3,10 +3,10 @@ services:
     build:
       context: ./backend
     environment:
-      PORT: 3000
+      PORT: 2000
       EXTERNAL_API_URL: ${EXTERNAL_API_URL:-https://open.er-api.com/v6/latest/USD}
     ports:
-      - '3000:3000'
+      - '2000:2000'
     networks:
       - app-network
 
@@ -14,7 +14,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - '8080:80'
+      - '2002:80'
     depends_on:
       - backend
     networks:

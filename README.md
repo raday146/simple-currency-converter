@@ -16,7 +16,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open [http://localhost:8080](http://localhost:8080). The frontend proxies `/api/*` to the backend.
+Open [http://localhost:2002](http://localhost:2002). The frontend proxies `/api/*` to the backend.
 
 ## Local development
 
@@ -28,7 +28,7 @@ npm install
 npm run start:dev
 ```
 
-API runs at [http://localhost:3000/api](http://localhost:3000/api).
+API runs at [http://localhost:2000/api](http://localhost:2000/api).
 
 ### Frontend (yarn)
 
@@ -38,7 +38,7 @@ yarn install
 yarn dev
 ```
 
-Dev server runs at [http://localhost:5173](http://localhost:5173) with API proxy to the backend.
+Dev server runs at [http://localhost:2002](http://localhost:2002) with API proxy to the backend.
 
 ## Tests and builds
 

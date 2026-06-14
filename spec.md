@@ -31,5 +31,5 @@ Formula:
 
 ### Docker Layout
 - Root `docker-compose.yml` with bridge network
-- `backend/Dockerfile`: multi-stage Node-Alpine, port 3000
-- `frontend/Dockerfile`: Vite build + Nginx on port 80 (host 8080), `/api/*` → `http://backend:3000`
+- `backend/Dockerfile`: multi-stage Node-Alpine, port 2000
+- `frontend/Dockerfile`: Vite build + Nginx on port 80 (host 2002), `/api/*` → `http://backend:2000`
