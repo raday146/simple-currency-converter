@@ -5,13 +5,15 @@ import { getErrorPresentation } from '../types/api';
 interface UseCurrenciesResult {
   currencies: string[];
   isLoading: boolean;
-  errorMessage: string | null;
+  systemAlert: string | null;
+  bannerError: string | null;
 }
 
 export function useCurrencies(): UseCurrenciesResult {
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [systemAlert, setSystemAlert] = useState<string | null>(null);
+  const [bannerError, setBannerError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -21,12 +23,19 @@ export function useCurrencies(): UseCurrenciesResult {
         const data = await fetchCurrencies();
         if (isMounted) {
           setCurrencies(data.currencies);
-          setErrorMessage(null);
+          setSystemAlert(null);
+          setBannerError(null);
         }
       } catch (error) {
-        if (isMounted) {
-          const presentation = getErrorPresentation(error);
-          setErrorMessage(presentation.message);
+        if (!isMounted) {
+          return;
+        }
+
+        const presentation = getErrorPresentation(error);
+        if (presentation.type === 'system') {
+          setSystemAlert(presentation.message);
+        } else {
+          setBannerError(presentation.message);
         }
       } finally {
         if (isMounted) {
@@ -42,7 +51,7 @@ export function useCurrencies(): UseCurrenciesResult {
     };
   }, []);
 
-  return { currencies, isLoading, errorMessage };
+  return { currencies, isLoading, systemAlert, bannerError };
 }
 
 export function validateAmount(value: string): string | null {

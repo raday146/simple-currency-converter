@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConvertCurrencyDto } from './dto/convert-currency.dto';
 import { ExchangeRateApiClient } from './providers/exchange-rate-api.client';
 import { ExchangeRateCache } from './cache/exchange-rate.cache';
@@ -58,9 +58,16 @@ export class ExchangeRateService {
   private async getFreshRates() {
     const cached = this.cache.get();
     if (cached) {
+      const ttlRemaining = this.cache.getTtlRemainingSeconds(cached.fetchedAt);
+      console.log(
+        `[Cache] 🟢 HIT - Serving exchange rates from memory. TTL remaining: ${ttlRemaining} seconds.`,
+      );
       return cached;
     }
 
+    console.log(
+      '[Cache] 🔴 MISS - Fetching fresh exchange rates from upstream API provider.',
+    );
     const data = await this.apiClient.fetchLatestRates();
     return this.cache.set(data);
   }
@@ -70,7 +77,7 @@ export class ExchangeRateService {
     rates: ExternalExchangeRateResponse['rates'],
   ): void {
     if (!(code in rates)) {
-      throw new BadRequestException(`Currency code ${code} is not supported.`);
+      throw new NotFoundException(`Currency code ${code} is not supported.`);
     }
   }
 }

@@ -11,13 +11,17 @@ export class ExchangeRateApiClient {
       const response = await fetch(this.apiUrl);
 
       if (!response.ok) {
-        throw new BadGatewayException('Exchange network unavailable. Please try again later.');
+        throw new BadGatewayException(
+          'Upstream exchange network down. Please try again later.',
+        );
       }
 
       const data = (await response.json()) as ExternalExchangeRateResponse;
 
       if (data.result !== 'success' || !data.rates) {
-        throw new BadGatewayException('Exchange network unavailable. Please try again later.');
+        throw new BadGatewayException(
+          'Upstream exchange network down. Please try again later.',
+        );
       }
 
       return data;
@@ -26,7 +30,9 @@ export class ExchangeRateApiClient {
         throw error;
       }
 
-      throw new BadGatewayException('Exchange network unavailable. Please try again later.');
+      throw new BadGatewayException(
+        'Upstream exchange network down. Please try again later.',
+      );
     }
   }
 }

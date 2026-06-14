@@ -36,6 +36,11 @@ export class ExchangeRateCache {
     return Date.now() - fetchedAt > TTL_MS;
   }
 
+  getTtlRemainingSeconds(fetchedAt: number): number {
+    const elapsed = Date.now() - fetchedAt;
+    return Math.max(0, Math.ceil((TTL_MS - elapsed) / 1000));
+  }
+
   clear(): void {
     this.store.clear();
   }

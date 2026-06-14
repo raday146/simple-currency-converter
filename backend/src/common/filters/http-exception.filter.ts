@@ -7,6 +7,13 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 
+const ERROR_LABELS: Partial<Record<number, string>> = {
+  [HttpStatus.BAD_REQUEST]: 'Bad Request',
+  [HttpStatus.NOT_FOUND]: 'Not Found',
+  [HttpStatus.BAD_GATEWAY]: 'Bad Gateway',
+  [HttpStatus.INTERNAL_SERVER_ERROR]: 'Internal Server Error',
+};
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -25,7 +32,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       response.status(status).json({
         statusCode: status,
         message: Array.isArray(message) ? message.join(', ') : message,
-        error: HttpStatus[status] ?? 'Error',
+        error: ERROR_LABELS[status] ?? 'Error',
       });
       return;
     }
