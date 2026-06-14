@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConvertCurrencyDto } from './dto/convert-currency.dto';
-import { ExchangeRateApiClient } from './exchange-rate-api.client';
+import { ExchangeRateApiClient } from './providers/exchange-rate-api.client';
 import { ExchangeRateCache } from './cache/exchange-rate.cache';
 import { ExternalExchangeRateResponse } from './types/external-exchange-rate-response';
 

@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExchangeRateApiClient } from '../exchange-rate-api.client';
+import { ExchangeRateApiClient } from '../providers/exchange-rate-api.client';
 import { ExchangeRateCache } from '../cache/exchange-rate.cache';
 import { ExchangeRateService } from '../exchange-rate.service';
 import { ExternalExchangeRateResponse } from '../types/external-exchange-rate-response';
