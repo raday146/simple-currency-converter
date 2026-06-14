@@ -1,98 +1,122 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Backend — NestJS API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The server exposes two endpoints under the global `/api` prefix: list currencies and convert amounts. All USD-based rates are fetched from the upstream provider, cached for 60 seconds, and reused across requests.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Module design
 
-## Description
+The `exchange-rate` feature is a self-contained NestJS module. The **controller** and **module** sit at the feature root — they are the public entry points. Everything else is grouped by responsibility:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+src/exchange-rate/
+├── exchange-rate.module.ts
+├── exchange-rate.controller.ts
+├── exchange-rate.service.ts
+├── cache/
+│   └── exchange-rate.cache.ts
+├── providers/
+│   └── exchange-rate-api.client.ts
+├── dto/
+│   └── convert-currency.dto.ts
+├── types/
+│   └── external-exchange-rate-response.ts
+└── __tests__/
+    ├── exchange-rate.cache.spec.ts
+    └── exchange-rate.service.spec.ts
 ```
 
-## Compile and run the project
+- **`cache/`** — TTL logic and in-memory storage. No HTTP knowledge.
+- **`providers/`** — upstream HTTP client (`fetch` to open.er-api.com). Isolated so the service stays testable with mocks.
+- **`dto/`** — request validation via `class-validator` (wired through the global `ValidationPipe`).
+- **`types/`** — shapes for upstream JSON and internal use.
+- **`__tests__/`** — unit tests for cache TTL and conversion math.
 
-```bash
-# development
-$ npm run start
+`ExchangeRateService` orchestrates cache → client → conversion. The controller only maps HTTP to DTOs and service calls.
 
-# watch mode
-$ npm run start:dev
+## Core engineering highlights
 
-# production mode
-$ npm run start:prod
+### Cache policy (60-second TTL)
+
+Rates are stored under a single key in a plain `Map`. On each read:
+
+1. If `Date.now() - fetchedAt <= 60_000`, the cached entry is returned — **no upstream call**.
+2. Otherwise the entry is treated as stale, the client fetches fresh data, and the cache is rewritten.
+
+`ExchangeRateService.getFreshRates()` logs every decision to stdout so you can verify behavior in Docker:
+
+```
+[Cache] 🟢 HIT - Serving exchange rates from memory. TTL remaining: 42 seconds.
+[Cache] 🔴 MISS - Fetching fresh exchange rates from upstream API provider.
 ```
 
-## Run tests
+Conversion formula (all rates are USD-based):
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```
+result = amount × (rates[to] / rates[from])
 ```
 
-## Deployment
+### Explicit error boundaries
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+A global `HttpExceptionFilter` normalizes all HTTP errors to:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```json
+{ "statusCode": number, "message": string, "error": string }
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+| Status | When | Source |
+|--------|------|--------|
+| **400** | Invalid or missing body fields (negative amount, bad shape, unknown properties) | Global `ValidationPipe` on DTOs |
+| **404** | `from` or `to` code not present in the fetched `rates` map | `NotFoundException` in `ExchangeRateService` |
+| **502** | Upstream unreachable, non-OK HTTP, or `result !== "success"` | `BadGatewayException` in `ExchangeRateApiClient` |
+| **500** | Anything else uncaught | `HttpExceptionFilter` fallback |
 
-## Resources
+Unexpected crashes never return raw stack traces to the client.
 
-Check out a few resources that may come in handy when working with NestJS:
+## API reference
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### `GET /api/currencies`
 
-## Support
+```json
+{
+  "base": "USD",
+  "currencies": ["EUR", "GBP", "ILS", "USD"],
+  "lastUpdated": "2026-06-14T00:02:31.000Z"
+}
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### `POST /api/convert`
 
-## Stay in touch
+Request:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```json
+{ "amount": 100, "from": "USD", "to": "ILS" }
+```
 
-## License
+Response:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```json
+{
+  "amount": 100,
+  "from": "USD",
+  "to": "ILS",
+  "rate": 2.925152,
+  "result": 292.5152,
+  "lastUpdated": "2026-06-14T00:02:31.000Z"
+}
+```
+
+## Security and configuration
+
+- **Input validation** — `ValidationPipe` with `whitelist` and `forbidNonWhitelisted` strips unknown fields and rejects bad input before it reaches business logic.
+- **No hardcoded secrets** — `EXTERNAL_API_URL` and `PORT` come from environment variables (see root `.env.example`).
+- **Network isolation in Docker** — backend and frontend share a bridge network; the UI reaches the API through Nginx proxy, so the browser talks to one origin in production.
+
+`helmet` and explicit CORS middleware are not wired in this codebase. For local dev, the Vite proxy handles same-origin API calls; in Docker, Nginx proxies `/api` to the backend. Add `helmet` and environment-scoped CORS if you expose the API directly to browsers on a different host.
+
+## Commands
+
+```bash
+npm install
+npm run start:dev    # watch mode, port 2000
+npm test             # unit tests (cache + service)
+npm run build        # compile to dist/
+```
